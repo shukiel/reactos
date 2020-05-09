@@ -98,14 +98,6 @@ do {                                                        \
     WRITE_REGISTER_UCHAR((_PixelPtr), (UCHAR)(_TextColor)); \
 } while (0);
 
-#ifdef CHAR_GEN_UPSIDE_DOWN
-# define GetFontPtr(_Char) &FontData[_Char * BOOTCHAR_HEIGHT] + BOOTCHAR_HEIGHT - 1;
-# define FONT_PTR_DELTA (-1)
-#else
-# define GetFontPtr(_Char) &FontData[_Char * BOOTCHAR_HEIGHT];
-# define FONT_PTR_DELTA (1)
-#endif
-
 VOID
 NTAPI
 DisplayCharacter(
@@ -199,79 +191,6 @@ DisplayCharacter(
 
 static VOID
 NTAPI
-SetPaletteEntryRGB(IN ULONG Id,
-                   IN ULONG Rgb)
-{
-    PCHAR Colors = (PCHAR)&Rgb;
-
-    /* Set the palette index */
-    __outpb(VGA_BASE_IO_PORT + DAC_ADDRESS_WRITE_PORT, (UCHAR)Id);
-
-    /* Set RGB colors */
-    __outpb(VGA_BASE_IO_PORT + DAC_DATA_REG_PORT, Colors[2] >> 2);
-    __outpb(VGA_BASE_IO_PORT + DAC_DATA_REG_PORT, Colors[1] >> 2);
-    __outpb(VGA_BASE_IO_PORT + DAC_DATA_REG_PORT, Colors[0] >> 2);
-}
-
-VOID
-NTAPI
-InitPaletteWithTable(
-    _In_ PULONG Table,
-    _In_ ULONG Count)
-{
-    ULONG i;
-    PULONG Entry = Table;
-
-    /* Loop every entry */
-    for (i = 0; i < Count; i++, Entry++)
-    {
-        /* Set the entry */
-        SetPaletteEntryRGB(i, *Entry);
-    }
-}
-
-static VOID
-NTAPI
-SetPaletteEntry(IN ULONG Id,
-                IN ULONG PaletteEntry)
-{
-    /* Set the palette index */
-    __outpb(VGA_BASE_IO_PORT + DAC_ADDRESS_WRITE_PORT, (UCHAR)Id);
-
-    /* Set RGB colors */
-    __outpb(VGA_BASE_IO_PORT + DAC_DATA_REG_PORT, PaletteEntry & 0xFF);
-    __outpb(VGA_BASE_IO_PORT + DAC_DATA_REG_PORT, (PaletteEntry >>= 8) & 0xFF);
-    __outpb(VGA_BASE_IO_PORT + DAC_DATA_REG_PORT, (PaletteEntry >> 8) & 0xFF);
-}
-
-VOID
-NTAPI
-InitializePalette(VOID)
-{
-    ULONG PaletteEntry[16] = {0x000000,
-                              0x000020,
-                              0x002000,
-                              0x002020,
-                              0x200000,
-                              0x200020,
-                              0x202000,
-                              0x202020,
-                              0x303030,
-                              0x00003F,
-                              0x003F00,
-                              0x003F3F,
-                              0x3F0000,
-                              0x3F003F,
-                              0x3F3F00,
-                              0x3F3F3F};
-    ULONG i;
-
-    /* Loop all the entries and set their palettes */
-    for (i = 0; i < 16; i++) SetPaletteEntry(i, PaletteEntry[i]);
-}
-
-static VOID
-NTAPI
 VgaScroll(IN ULONG Scroll)
 {
     ULONG Top, RowSize;
@@ -359,21 +278,6 @@ PreserveRow(IN ULONG CurrentTop,
 }
 
 /* PUBLIC FUNCTIONS **********************************************************/
-
-/*
- * @implemented
- */
-ULONG
-NTAPI
-VidSetTextColor(IN ULONG Color)
-{
-    ULONG OldColor;
-
-    /* Save the old color and set the new one */
-    OldColor = VidpTextColor;
-    VidpTextColor = Color;
-    return OldColor;
-}
 
 /*
  * @implemented

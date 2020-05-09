@@ -21,6 +21,14 @@
 #define BOOTCHAR_HEIGHT 13
 #define BOOTCHAR_WIDTH  8 // Each character line is encoded in a UCHAR.
 
+#ifdef CHAR_GEN_UPSIDE_DOWN
+# define GetFontPtr(_Char) &FontData[_Char * BOOTCHAR_HEIGHT] + BOOTCHAR_HEIGHT - 1;
+# define FONT_PTR_DELTA (-1)
+#else
+# define GetFontPtr(_Char) &FontData[_Char * BOOTCHAR_HEIGHT];
+# define FONT_PTR_DELTA (1)
+#endif
+
 /* Bitmap Header */
 typedef struct tagBITMAPINFOHEADER
 {
@@ -40,6 +48,26 @@ typedef struct tagBITMAPINFOHEADER
 /* Supported bitmap compression formats */
 #define BI_RGB  0
 #define BI_RLE4 2
+
+/* Boot video standard colors */
+#define COLOR_BLACK          0
+#define COLOR_BLUE           1
+#define COLOR_GREEN          2
+#define COLOR_CYAN           3
+#define COLOR_RED            4
+#define COLOR_MAGENTA        5
+#define COLOR_BROWN          6
+#define COLOR_LIGHT_GRAY     7
+#define COLOR_DARK_GRAY      8
+#define COLOR_LIGHT_BLUE     9
+#define COLOR_LIGHT_GREEN    10
+#define COLOR_LIGHT_CYAN     11
+#define COLOR_LIGHT_RED      12
+#define COLOR_LIGHT_MAGENTA  13
+#define COLOR_YELLOW         14
+#define COLOR_WHITE          15
+#define COLOR_TRANSPARENT    16
+#define MAX_COLORS           16
 
 typedef struct _PALETTE_ENTRY
 {

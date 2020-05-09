@@ -2,7 +2,7 @@
 
 /* GLOBALS ********************************************************************/
 
-UCHAR VidpTextColor = 0x0F;
+UCHAR VidpTextColor = COLOR_WHITE;
 
 ULONG VidpCurrentX = 0;
 ULONG VidpCurrentY = 0;
@@ -15,7 +15,58 @@ ULONG VidpScrollRegion[4] =
     SCREEN_HEIGHT - 1
 };
 
+PALETTE_ENTRY DefaultPalette[MAX_COLORS] =
+{
+    {0x00, 0x00, 0x00}, // Black
+    {0x00, 0x00, 0x80}, // Blue
+    {0x00, 0x80, 0x00}, // Green
+    {0x00, 0x80, 0x80}, // Cyan
+    {0x80, 0x00, 0x00}, // Red
+    {0x80, 0x00, 0x80}, // Magenta
+    {0x80, 0x80, 0x00}, // Brown
+    {0xC0, 0xC0, 0xC0}, // Light Gray
+    {0x80, 0x80, 0x80}, // Dark Gray
+    {0x00, 0x00, 0xFF}, // Light Blue
+    {0x00, 0xFF, 0x00}, // Light Green
+    {0x00, 0xFF, 0xFF}, // Light Cyan
+    {0xFF, 0x00, 0x00}, // Light Red
+    {0xFF, 0x00, 0xFF}, // Light Magenta
+    {0xFF, 0xFF, 0x00}, // Yellow
+    {0xFF, 0xFF, 0xFF}, // White
+};
+
 /* PRIVATE FUNCTIONS **********************************************************/
+
+VOID
+NTAPI
+InitializePalette(VOID)
+{
+    ULONG i, pal;
+
+    /* Loop all the entries and set their palettes */
+    for (i = 0; i < MAX_COLORS; i++)
+    {
+        pal = (DefaultPalette[i].Red << 16) | (DefaultPalette[i].Green << 8) | DefaultPalette[i].Blue;
+        SetPaletteEntry(i, pal);
+    }
+}
+
+VOID
+NTAPI
+InitPaletteWithTable(
+    _In_ PULONG Table,
+    _In_ ULONG Count)
+{
+    ULONG i;
+    PULONG Entry = Table;
+
+    /* Loop every entry */
+    for (i = 0; i < Count; i++, Entry++)
+    {
+        /* Set the entry */
+        SetPaletteEntry(i, *Entry);
+    }
+}
 
 static VOID
 NTAPI
@@ -272,6 +323,21 @@ RleBitBlt(
 
 /* PUBLIC FUNCTIONS ***********************************************************/
 
+/*
+ * @implemented
+ */
+ULONG
+NTAPI
+VidSetTextColor(IN ULONG Color)
+{
+    ULONG OldColor;
+
+    /* Save the old color and set the new one */
+    OldColor = VidpTextColor;
+    VidpTextColor = Color;
+    return OldColor;
+}
+
 VOID
 NTAPI
 VidDisplayStringXY(
@@ -286,13 +352,13 @@ VidDisplayStringXY(
      * If the caller wanted transparent, then send the special value (16),
      * else use our default and call the helper routine.
      */
-    BackColor = Transparent ? 16 : 14;
+    BackColor = Transparent ? COLOR_TRANSPARENT : COLOR_YELLOW;
 
     /* Loop every character and adjust the position */
-    for (; *String; ++String, Left += 8)
+    for (; *String; ++String, Left += BOOTCHAR_WIDTH)
     {
         /* Display a character */
-        DisplayCharacter(*String, Left, Top, 12, BackColor);
+        DisplayCharacter(*String, Left, Top, COLOR_LIGHT_RED, BackColor);
     }
 }
 
@@ -305,8 +371,8 @@ VidSetScrollRegion(
     _In_ ULONG Bottom)
 {
     /* Assert alignment */
-    ASSERT((Left  & 0x7) == 0);
-    ASSERT((Right & 0x7) == 7);
+    ASSERT((Left % BOOTCHAR_WIDTH) == 0);
+    ASSERT((Right % BOOTCHAR_WIDTH) == BOOTCHAR_WIDTH - 1);
 
     /* Set Scroll Region */
     VidpScrollRegion[0] = Left;
@@ -347,14 +413,16 @@ VidBitBlt(
     PBITMAPINFOHEADER BitmapInfoHeader;
     LONG Delta;
     PUCHAR BitmapOffset;
+    ULONG PaletteCount;
 
     /* Get the Bitmap Header */
     BitmapInfoHeader = (PBITMAPINFOHEADER)Buffer;
 
     /* Initialize the palette */
+    PaletteCount = BitmapInfoHeader->biClrUsed ?
+                   BitmapInfoHeader->biClrUsed : MAX_COLORS;
     InitPaletteWithTable((PULONG)(Buffer + BitmapInfoHeader->biSize),
-                         (BitmapInfoHeader->biClrUsed) ?
-                         BitmapInfoHeader->biClrUsed : 16);
+                         PaletteCount);
 
     /* Make sure we can support this bitmap */
     ASSERT((BitmapInfoHeader->biBitCount * BitmapInfoHeader->biPlanes) <= 4);
@@ -366,7 +434,7 @@ VidBitBlt(
     Delta = (BitmapInfoHeader->biBitCount * BitmapInfoHeader->biWidth) + 31;
     Delta >>= 3;
     Delta &= ~3;
-    BitmapOffset = Buffer + sizeof(BITMAPINFOHEADER) + 16 * sizeof(ULONG);
+    BitmapOffset = Buffer + sizeof(BITMAPINFOHEADER) + PaletteCount * sizeof(ULONG);
 
     /* Check the compression of the bitmap */
     if (BitmapInfoHeader->biCompression == BI_RLE4)

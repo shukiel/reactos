@@ -21,6 +21,22 @@ extern UCHAR PixelMask[8];
 
 FORCEINLINE
 VOID
+SetPaletteEntry(IN ULONG Id,
+                IN ULONG Rgb)
+{
+    PCHAR Colors = (PCHAR)&Rgb;
+
+    /* Set the palette index */
+    __outpb(VGA_BASE_IO_PORT + DAC_ADDRESS_WRITE_PORT, (UCHAR)Id);
+
+    /* Set RGB colors */
+    __outpb(VGA_BASE_IO_PORT + DAC_DATA_REG_PORT, Colors[2] >> 2);
+    __outpb(VGA_BASE_IO_PORT + DAC_DATA_REG_PORT, Colors[1] >> 2);
+    __outpb(VGA_BASE_IO_PORT + DAC_DATA_REG_PORT, Colors[0] >> 2);
+}
+
+FORCEINLINE
+VOID
 SetPixel(
     _In_ ULONG Left,
     _In_ ULONG Top,
